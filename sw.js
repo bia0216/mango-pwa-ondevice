@@ -2,7 +2,7 @@
 // App files: network first (always the newest), cache when offline.
 // Model files and ONNX Runtime: cache first (they are big and only change with a new cache name), so the app
 // works offline after the first scan.
-const CACHE = "mango-ondevice-v2";
+const CACHE = "mango-ondevice-v3";
 const ASSETS = [
   "./",
   "index.html",

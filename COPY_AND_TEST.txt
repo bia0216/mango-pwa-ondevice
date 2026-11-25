@@ -1,41 +1,39 @@
-MANGO GRADER ON-DEVICE: COPY AND TEST (on the laptop that has the models)
+MANGO GRADER ON-DEVICE (v3: all models + heat maps on the phone): COPY AND TEST
 
-1. COPY
-   Copy ALL files from this zip into the app folder (the one with index.html), and replace the old ones:
-     index.html, app.js, ondevice.js (NEW), sw.js, style.css, manifest.webmanifest, README.md, icons\
-   Keep your models folder there. The app folder must look like this:
-     index.html
-     app.js
-     ondevice.js
-     sw.js
-     ...
-     models\detector.onnx
-     models\ripeness_yolo.onnx
-     models\disease_yolo.onnx
-     models\models.json
+1. GET THE NEW MODEL FILES
+   Download from Google Drive: mango_project/ondevice/mango_ondevice_keras_models.zip (66 MB).
+   Extract it INTO your app's models folder (next to index.html). Replace models.json when Windows asks.
+   The models folder must then hold 11 files:
+     detector.onnx
+     ripeness_yolo.onnx, disease_yolo.onnx
+     ripeness_mobilenetv2.onnx, disease_mobilenetv2.onnx
+     ripeness_effnetv2b0.onnx.part0, ripeness_effnetv2b0.onnx.part1
+     disease_effnetv2b0.onnx.part0, disease_effnetv2b0.onnx.part1
+     models.json   (the NEW one: it lists all 7 models)
 
-2. TEST ON THE LAPTOP (VS Code + Live Server)
-   - Open the app folder in VS Code, right-click index.html -> "Open with Live Server".
-   - The top pill says "On-phone models · server optional". The Model selector shows "On this phone (offline)".
-   - Ripeness tab -> Upload photo -> a photo with 2-3 mangoes.
-     The first scan says "Loading detector model…" etc. (about 22 MB, once).
-     Expected: numbered boxes on the photo, one chip per mango, "Model: On this phone".
-   - Disease tab -> Upload a mango with spots, then a leaf photo.
-     Expected: disease name, verdict, numbered boxes; note "On this phone has no heat map".
-   - Press F12 -> Console: there should be no red errors. If there are, copy them to Claude.
+2. COPY THE APP FILES from this zip into the app folder (replace the old ones):
+     index.html, app.js, ondevice.js, sw.js, style.css, manifest.webmanifest, README.md, icons\
 
-3. UPLOAD TO GITHUB (repo mango-pwa-ondevice)
-   a) Changed files: Add file -> Upload files -> "choose your files" -> select
+3. TEST ON THE LAPTOP (VS Code -> right-click index.html -> Open with Live Server)
+   - Ripeness tab: the Model list shows "MobileNetV2 · on phone" (default), "EfficientNetV2-B0 · on phone",
+     "YOLO26n-cls · on phone". Upload a photo with 2-3 mangoes -> numbered boxes, one chip per mango.
+   - Disease tab: default "EfficientNetV2-B0 · on phone". Upload a mango with spots -> boxes AND a heat map
+     on each mango; note "Red = where the disease model looked most". Try a leaf photo too.
+   - Try each model once (the first use of each model loads it: 6-24 MB).
+   - F12 -> Console: no red errors (a 404 means a model file is missing from the models folder).
+
+4. UPLOAD TO GITHUB (repo mango-pwa-ondevice)
+   a) App files: Add file -> Upload files -> "choose your files" ->
       index.html, app.js, ondevice.js, sw.js, README.md -> Commit changes.
-   b) Make the models folder: Add file -> Create new file -> in the name box type   models/README.md
-      (typing the "/" makes the folder) -> write one line, e.g. "On-device model files" -> Commit changes.
-   c) Open the new models folder on GitHub -> Add file -> Upload files -> "choose your files" -> select
-      detector.onnx, ripeness_yolo.onnx, disease_yolo.onnx, models.json -> Commit changes.
-      Each file is under 10 MB, so the web upload accepts them.
+   b) Model files: open the models folder on GitHub -> Add file -> Upload files -> "choose your files" ->
+      the 7 new files (ripeness_mobilenetv2.onnx, disease_mobilenetv2.onnx, the 4 .part files) AND models.json
+      -> Commit changes. Every file is under 25 MB, so the web upload accepts them.
+      (If the models folder does not exist yet: Add file -> Create new file -> name  models/README.md  -> commit,
+       then upload ALL 11 files into it.)
    - Wait 1-2 minutes: https://bia0216.github.io/mango-pwa-ondevice/
 
-4. TEST ON THE PHONE
-   - Open the link with internet, scan one photo (this downloads and keeps the models).
-   - Turn on airplane mode, close and reopen the app, scan again. If it still grades: it runs on the phone.
+5. TEST ON THE PHONE
+   - With internet: open the link, refresh twice, scan once with each model you want offline (this saves it).
+   - Airplane mode: close and reopen the app, scan again. Ripeness, disease AND heat maps should still work.
 
 Never upload API keys. The presented app (mango-pwa) is not part of this.

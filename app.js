@@ -109,10 +109,12 @@
   const MODEL_KEY = "mangoOD.model";
   let modelChoices = [];          // values the server accepts, e.g. ["MobileNetV2", "EfficientNetV2-B0", "YOLO26n-cls"]
   // the on-phone models (ondevice.js): always offered first, and the default ("phone first, server optional")
-  const DEVICE = window.MangoOnDevice ? window.MangoOnDevice.LABEL : "";
+  const OD = window.MangoOnDevice || null;
+  const DEVICE_R = OD ? OD.RIPENESS_MODELS : [], DEVICE_D = OD ? OD.DISEASE_MODELS : [];
+  const isDev = (v) => !!OD && OD.isDevice(v);
 
   // fills a <select> from a Gradio dropdown; returns the accepted values
-  function fillSelect(comp, select, row, key) {
+  function fillSelect(comp, select, row, key, device = []) {
     const raw = comp && comp.props && Array.isArray(comp.props.choices) ? comp.props.choices : [];
     // Gradio lists choices as ["Label", "value"] pairs (newer) or plain strings (older)
     const choices = raw.map((ch) => Array.isArray(ch) ? { label: String(ch[0]), value: String(ch[1] ?? ch[0]) }
@@ -120,17 +122,25 @@
     const values = choices.map((c) => c.value);
     const best = comp && comp.props && values.includes(String(comp.props.value)) ? String(comp.props.value) : "";
     select.innerHTML = "";
-    const all = (DEVICE ? [{ label: DEVICE + " (offline)", value: DEVICE }] : []).concat(choices);
-    for (const c of all) {
-      const o = document.createElement("option");
-      o.value = c.value;
-      o.textContent = c.label + (c.value === best && values.length > 1 ? " (recommended)" : "");
-      select.appendChild(o);
-    }
+    const addGroup = (label, list, mark) => {
+      if (!list.length) return;
+      const grp = document.createElement("optgroup");
+      grp.label = label;
+      for (const c of list) {
+        const o = document.createElement("option");
+        o.value = c.value;
+        o.textContent = c.label + (mark && c.value === best && values.length > 1 ? " (recommended)" : "");
+        grp.appendChild(o);
+      }
+      select.appendChild(grp);
+    };
+    addGroup("On this phone (offline)", device.map((m) => ({ label: m.name + " · on phone", value: m.value })), false);
+    addGroup("Colab server", choices, true);
+    const all = device.map((m) => m.value).concat(values);
     let saved = "";
     try { saved = localStorage.getItem(key) || ""; } catch (_) { /* ignore */ }
-    if (saved && (saved === DEVICE || values.includes(saved))) select.value = saved;   // the user's own choice wins
-    else if (DEVICE) select.value = DEVICE;                 // phone first
+    if (saved && all.includes(saved)) select.value = saved;   // the user's own choice wins
+    else if (device.length) select.value = device[0].value;  // phone first (MobileNetV2 / EfficientNetV2-B0, like the server)
     else if (best) select.value = best;                     // otherwise the server's default (cell 7)
     row.hidden = all.length < 1;
     return values;                                   // server models only (the phone option is not sent to the server)
@@ -139,9 +149,9 @@
   function setupModels(cfg) {
     const drops = cfg && Array.isArray(cfg.components) ? cfg.components.filter((c) => c.type === "dropdown") : [];
     const isDis = (c) => c.props && c.props.label === "Disease model";
-    modelChoices = fillSelect(drops.find((c) => !isDis(c)), el.modelSelect, el.modelRow, MODEL_KEY);
-    el.modelRow.hidden = !DEVICE && modelChoices.length === 0;   // ripeness: always show which model answered
-    dModelChoices = fillSelect(drops.find(isDis), d.modelSelect, d.modelRow, D_MODEL_KEY);
+    modelChoices = fillSelect(drops.find((c) => !isDis(c)), el.modelSelect, el.modelRow, MODEL_KEY, DEVICE_R);
+    el.modelRow.hidden = !DEVICE_R.length && modelChoices.length === 0;   // ripeness: always show which model answered
+    dModelChoices = fillSelect(drops.find(isDis), d.modelSelect, d.modelRow, D_MODEL_KEY, DEVICE_D);
   }
   const D_MODEL_KEY = "mangoOD.dmodel";
   let dModelChoices = [];
@@ -153,9 +163,9 @@
 
   function currentModel() {
     const v = el.modelSelect.value;
-    return v && (v === DEVICE || modelChoices.includes(v)) ? v : "";
+    return v && (isDev(v) || modelChoices.includes(v)) ? v : "";
   }
-  const onDevice = () => !!DEVICE && el.modelSelect.value === DEVICE;
+  const onDevice = () => isDev(el.modelSelect.value);
 
   async function predict(blob) {
     const fd = new FormData();
@@ -219,9 +229,9 @@
   });
   const currentDModel = () => {
     const v = d.modelSelect.value;
-    return v && (v === DEVICE || dModelChoices.includes(v)) ? v : "";
+    return v && (isDev(v) || dModelChoices.includes(v)) ? v : "";
   };
-  const dOnDevice = () => !!DEVICE && d.modelSelect.value === DEVICE;
+  const dOnDevice = () => isDev(d.modelSelect.value);
 
   function dError(msg) { if (d.error) { d.error.textContent = msg; d.error.hidden = !msg; } }
 
@@ -319,9 +329,7 @@
     try {
       let out;
       if (device) {                                  // on the phone: no upload, no server
-        await MangoOnDevice.ready((s) => { if (busyText) busyText.textContent = s; });
-        if (busyText) busyText.textContent = busyOld;
-        out = await MangoOnDevice.diseaseScan(jpeg);
+        out = await OD.diseaseScan(jpeg, d.modelSelect.value, (s) => { if (busyText) busyText.textContent = s; });
       } else {
         const path = await uploadBlob(jpeg);
         const file = { path, meta: { _type: "gradio.FileData" } };
@@ -636,9 +644,7 @@
     if (onDevice()) {                                // on the phone: same result shape as the server's ripeness_scan
       const busyText = el.busy.querySelector("span"), busyOld = busyText ? busyText.textContent : "";
       try {
-        await MangoOnDevice.ready((s) => { if (busyText) busyText.textContent = s; });
-        if (busyText) busyText.textContent = busyOld;
-        const [res, picture] = await MangoOnDevice.ripenessScan(jpeg);
+        const [res, picture] = await OD.ripenessScan(jpeg, el.modelSelect.value, (s) => { if (busyText) busyText.textContent = s; });
         renderMulti(res, picture);
         const t = addMultiScan(res);
         const on = el.mItems.querySelector(".m-item.on");
@@ -791,7 +797,7 @@
       if (blob) {
         try {
           const device = onDevice();
-          const r = device ? await MangoOnDevice.predict(blob) : await predict(blob);
+          const r = device ? await OD.predict(blob, el.modelSelect.value) : await predict(blob);
           if (!liveOn) break;
           showLive(r);
           if (!device) setPill("ok", "Model online · " + new URL(server).host);

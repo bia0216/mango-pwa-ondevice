@@ -19,6 +19,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-title" content="Mango OD">
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -206,7 +207,7 @@
                   <li>Made for the <strong>long yellow mango</strong>. Several mangoes in one photo? Our detector finds each one, and each gets its own grade (numbered boxes). Live mode grades the whole frame.</li>
                   <li>Photos that don't look like a mango should be answered with "Not a mango". Look-alike fruit can still pass.</li>
                   <li>Disease is a separate scan (mango or leaf) in the <strong>Disease</strong> tab.</li>
-                  <li><strong>On this phone (offline):</strong> our YOLO models run inside the app. The first scan downloads them (about 22 MB); after that it works without internet. A Colab server is optional, for the other models.</li>
+                  <li><strong>On this phone (offline):</strong> all our models run inside the app: MobileNetV2 (9 MB), EfficientNetV2-B0 (24 MB) and YOLO26n-cls (6 MB), plus the mango detector (10 MB). Each one downloads the first time you use it; after that it works without internet. A Colab server is optional.</li>
                   <li><strong>Was this right?</strong> Your answer is saved with the scan and goes into the batch report (CSV), so the team collects real test photos.</li>
                 </ul>
               </section>
@@ -292,7 +293,7 @@
                   <li><strong>Mango:</strong> healthy, anthracnose, stem-end rot (black tip once our own photos are added).</li>
                   <li><strong>Leaf:</strong> healthy, <strong>bacterial canker</strong>, or another leaf disease. Photograph a leaf on its own: when mangoes are in the photo, only the mangoes are checked.</li>
                   <li>Several mangoes? Each gets its own disease result and heat map; tap a number to see its details.</li>
-                  <li><strong>On this phone (offline):</strong> the YOLO disease model runs inside the app, with numbered boxes but no heat map. Heat maps need the Colab server.</li>
+                  <li><strong>On this phone (offline):</strong> all three disease models run inside the app. MobileNetV2 and EfficientNetV2-B0 also give the Grad-CAM heat map offline (identical to the server's in our check); YOLO26n-cls gives numbered boxes but no heat map.</li>
                   <li>Three disease models are compared on the same photos. Heat maps come from MobileNetV2 and EfficientNetV2-B0; YOLO26n-cls shows no heat map.</li>
                   <li>"Not a mango or leaf": no mango was found and our ripeness model also says it is not a mango. A rough check, not tested on many photos.</li>
                   <li>Verdict = our team's rule: disease ≥ 50% → Disease found; healthy ≥ 60% → Healthy; otherwise Check by hand. Not an official standard.</li>
