@@ -206,7 +206,7 @@
                   <li>Made for the <strong>long yellow mango</strong>. Several mangoes in one photo? Our detector finds each one, and each gets its own grade (numbered boxes). Live mode grades the whole frame.</li>
                   <li>Photos that don't look like a mango should be answered with "Not a mango". Look-alike fruit can still pass.</li>
                   <li>Disease is a separate scan (mango or leaf) in the <strong>Disease</strong> tab.</li>
-                  <li>Prediction runs on the project's model server, so an internet connection is needed.</li>
+                  <li><strong>On this phone (offline):</strong> our YOLO models run inside the app. The first scan downloads them (about 22 MB); after that it works without internet. A Colab server is optional, for the other models.</li>
                   <li><strong>Was this right?</strong> Your answer is saved with the scan and goes into the batch report (CSV), so the team collects real test photos.</li>
                 </ul>
               </section>
@@ -292,6 +292,7 @@
                   <li><strong>Mango:</strong> healthy, anthracnose, stem-end rot (black tip once our own photos are added).</li>
                   <li><strong>Leaf:</strong> healthy, <strong>bacterial canker</strong>, or another leaf disease. Photograph a leaf on its own: when mangoes are in the photo, only the mangoes are checked.</li>
                   <li>Several mangoes? Each gets its own disease result and heat map; tap a number to see its details.</li>
+                  <li><strong>On this phone (offline):</strong> the YOLO disease model runs inside the app, with numbered boxes but no heat map. Heat maps need the Colab server.</li>
                   <li>Three disease models are compared on the same photos. Heat maps come from MobileNetV2 and EfficientNetV2-B0; YOLO26n-cls shows no heat map.</li>
                   <li>"Not a mango or leaf": no mango was found and our ripeness model also says it is not a mango. A rough check, not tested on many photos.</li>
                   <li>Verdict = our team's rule: disease ≥ 50% → Disease found; healthy ≥ 60% → Healthy; otherwise Check by hand. Not an official standard.</li>
@@ -412,6 +413,7 @@
   </dialog>
 
   <canvas id="canvas" hidden></canvas>
+  <script src="ondevice.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

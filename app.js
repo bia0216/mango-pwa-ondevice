@@ -89,7 +89,7 @@
   }
 
   async function checkServer() {
-    if (!server) { setPill("none", "No model server set (tap to add)"); return false; }
+    if (!server) { setPill("ok", "On-phone models · server optional (tap to add)"); return false; }
     setPill("checking", "Connecting to model…");
     try {
       const r = await timedFetch(server + "/config", { cache: "no-store" }, 10000);
@@ -108,6 +108,8 @@
   // ---------- model selector (shown only when the server offers a "Model" dropdown, e.g. the comparison notebook) ----------
   const MODEL_KEY = "mangoOD.model";
   let modelChoices = [];          // values the server accepts, e.g. ["MobileNetV2", "EfficientNetV2-B0", "YOLO26n-cls"]
+  // the on-phone models (ondevice.js): always offered first, and the default ("phone first, server optional")
+  const DEVICE = window.MangoOnDevice ? window.MangoOnDevice.LABEL : "";
 
   // fills a <select> from a Gradio dropdown; returns the accepted values
   function fillSelect(comp, select, row, key) {
@@ -118,7 +120,8 @@
     const values = choices.map((c) => c.value);
     const best = comp && comp.props && values.includes(String(comp.props.value)) ? String(comp.props.value) : "";
     select.innerHTML = "";
-    for (const c of choices) {
+    const all = (DEVICE ? [{ label: DEVICE + " (offline)", value: DEVICE }] : []).concat(choices);
+    for (const c of all) {
       const o = document.createElement("option");
       o.value = c.value;
       o.textContent = c.label + (c.value === best && values.length > 1 ? " (recommended)" : "");
@@ -126,17 +129,18 @@
     }
     let saved = "";
     try { saved = localStorage.getItem(key) || ""; } catch (_) { /* ignore */ }
-    if (values.includes(saved)) select.value = saved;       // the user's own choice wins
+    if (saved && (saved === DEVICE || values.includes(saved))) select.value = saved;   // the user's own choice wins
+    else if (DEVICE) select.value = DEVICE;                 // phone first
     else if (best) select.value = best;                     // otherwise the server's default (cell 7)
-    row.hidden = values.length < 2;                  // nothing to choose with one model
-    return values;
+    row.hidden = all.length < 1;
+    return values;                                   // server models only (the phone option is not sent to the server)
   }
 
   function setupModels(cfg) {
     const drops = cfg && Array.isArray(cfg.components) ? cfg.components.filter((c) => c.type === "dropdown") : [];
     const isDis = (c) => c.props && c.props.label === "Disease model";
     modelChoices = fillSelect(drops.find((c) => !isDis(c)), el.modelSelect, el.modelRow, MODEL_KEY);
-    el.modelRow.hidden = modelChoices.length === 0;  // ripeness: always show which model answered
+    el.modelRow.hidden = !DEVICE && modelChoices.length === 0;   // ripeness: always show which model answered
     dModelChoices = fillSelect(drops.find(isDis), d.modelSelect, d.modelRow, D_MODEL_KEY);
   }
   const D_MODEL_KEY = "mangoOD.dmodel";
@@ -147,7 +151,11 @@
     el.resultCard.hidden = true;     // an old result belongs to the previous model
   });
 
-  function currentModel() { return modelChoices.length ? el.modelSelect.value : ""; }
+  function currentModel() {
+    const v = el.modelSelect.value;
+    return v && (v === DEVICE || modelChoices.includes(v)) ? v : "";
+  }
+  const onDevice = () => !!DEVICE && el.modelSelect.value === DEVICE;
 
   async function predict(blob) {
     const fd = new FormData();
@@ -209,7 +217,11 @@
   d.modelSelect.addEventListener("change", () => {
     try { localStorage.setItem(D_MODEL_KEY, d.modelSelect.value); } catch (_) { /* ignore */ }
   });
-  const currentDModel = () => (dModelChoices.length ? d.modelSelect.value : "");
+  const currentDModel = () => {
+    const v = d.modelSelect.value;
+    return v && (v === DEVICE || dModelChoices.includes(v)) ? v : "";
+  };
+  const dOnDevice = () => !!DEVICE && d.modelSelect.value === DEVICE;
 
   function dError(msg) { if (d.error) { d.error.textContent = msg; d.error.hidden = !msg; } }
 
@@ -291,7 +303,7 @@
   async function scanDisease(file) {
     if (!file) return;
     dError("");
-    if (!server) { openSettings("Add the model server link first, then scan again."); return; }
+    if (!server && !dOnDevice()) { openSettings("Add the model server link first, then scan again."); return; }
     let jpeg;
     try { jpeg = await toJpeg(file); } catch (e) { dError(e.message || "Could not read this image."); return; }
     d.placeholder.hidden = true;
@@ -302,11 +314,20 @@
     d.resultCard.hidden = true; d.verdictCard.hidden = true;
     d.summary.hidden = true; d.items.hidden = true;
     d.busy.hidden = false;
+    const device = dOnDevice();
+    const busyText = d.busy.querySelector("span"), busyOld = busyText ? busyText.textContent : "";
     try {
-      const path = await uploadBlob(jpeg);
-      const file = { path, meta: { _type: "gradio.FileData" } };
-      let out = dModelChoices.length ? await gradioCall("disease_scan", [file, currentDModel()], 90000) : null;
-      if (!out) out = await gradioCall("disease_scan", [file], 90000);   // older server: one disease model, photo only
+      let out;
+      if (device) {                                  // on the phone: no upload, no server
+        await MangoOnDevice.ready((s) => { if (busyText) busyText.textContent = s; });
+        if (busyText) busyText.textContent = busyOld;
+        out = await MangoOnDevice.diseaseScan(jpeg);
+      } else {
+        const path = await uploadBlob(jpeg);
+        const file = { path, meta: { _type: "gradio.FileData" } };
+        out = dModelChoices.length ? await gradioCall("disease_scan", [file, currentDModel()], 90000) : null;
+        if (!out) out = await gradioCall("disease_scan", [file], 90000);   // older server: one disease model, photo only
+      }
       const g = out && out[0];
       if (!g || g.available === false) {
         dError("The model server has no disease scan yet. In Colab: train the disease model (mango_disease.ipynb, D3), "
@@ -319,14 +340,15 @@
       all.forEach((it) => addDiseaseScan({ ...it, model: g.model || currentDModel() }, t, all.length));
       fbD = { t, n: g.n || 1, of: all.length, disease: true, names: g.names || {} };
       renderFeedback(d.feedback, fbD);
-      setPill("ok", "Model online · " + new URL(server).host);
+      if (!device) setPill("ok", "Model online · " + new URL(server).host);
     } catch (e) {
-      const offline = e.name === "AbortError" || e instanceof TypeError;
+      const offline = !device && (e.name === "AbortError" || e instanceof TypeError);
       dError(offline ? "Can't reach the model server. Is cell 7 still running in Colab? Paste its newest link in Settings."
                      : (e.message || "Something went wrong."));
       if (offline) setPill("bad", "Model server offline (tap to change link)");
     } finally {
       d.busy.hidden = true;
+      if (busyText) busyText.textContent = busyOld;
     }
   }
 
@@ -598,7 +620,7 @@
     el.preview.hidden = false;
     el.placeholder.hidden = true;
 
-    if (!server) {
+    if (!server && !onDevice()) {
       pendingBlob = jpeg;
       openSettings("Add the model server link first. Your photo will be analysed right after.");
       return;
@@ -611,6 +633,27 @@
   async function analyse(jpeg) {
     el.busy.hidden = false;
     el.cameraBtn.disabled = true;
+    if (onDevice()) {                                // on the phone: same result shape as the server's ripeness_scan
+      const busyText = el.busy.querySelector("span"), busyOld = busyText ? busyText.textContent : "";
+      try {
+        await MangoOnDevice.ready((s) => { if (busyText) busyText.textContent = s; });
+        if (busyText) busyText.textContent = busyOld;
+        const [res, picture] = await MangoOnDevice.ripenessScan(jpeg);
+        renderMulti(res, picture);
+        const t = addMultiScan(res);
+        const on = el.mItems.querySelector(".m-item.on");
+        const idx = on ? [...el.mItems.children].indexOf(on) : 0;
+        fbR = { t, n: (res.items[idx] || res.items[0]).n || 1, of: res.items.length };
+        renderFeedback(el.feedback, fbR);
+      } catch (e) {
+        showError(e.message || "The on-phone model could not run.");
+      } finally {
+        if (busyText) busyText.textContent = busyOld;
+        el.busy.hidden = true;
+        el.cameraBtn.disabled = false;
+      }
+      return;
+    }
     try {
       if (modelChoices.length) {                     // the comparison server (cell 7) can find and grade EVERY mango
         const path = await uploadBlob(jpeg);
@@ -747,12 +790,14 @@
       const blob = await frameBlob();
       if (blob) {
         try {
-          const r = await predict(blob);
+          const device = onDevice();
+          const r = device ? await MangoOnDevice.predict(blob) : await predict(blob);
           if (!liveOn) break;
           showLive(r);
-          setPill("ok", "Model online · " + new URL(server).host);
+          if (!device) setPill("ok", "Model online · " + new URL(server).host);
         } catch (e) {
           stopLive();
+          if (onDevice()) { showError("Live mode stopped: " + (e.message || "the on-phone model could not run.")); break; }
           showError("Live mode stopped: can't reach the model server. Is the Colab cell still running? Paste its new link in Settings if it changed.");
           setPill("bad", "Model server offline (tap to change link)");
           break;
@@ -763,7 +808,7 @@
   }
 
   function startLive() {
-    if (!server) { openSettings("Add the model server link first, then start live mode."); return; }
+    if (!server && !onDevice()) { openSettings("Add the model server link first, then start live mode."); return; }
     showError("");
     liveOn = true;
     el.liveBtn.textContent = "Stop live";
@@ -1300,5 +1345,6 @@
   }));
 
   showTab(location.hash.slice(1) || "overview", false);
+  setupModels(null);                                 // "On this phone" is available even without a server
   checkServer();
 })();

@@ -1,0 +1,41 @@
+MANGO GRADER ON-DEVICE: COPY AND TEST (on the laptop that has the models)
+
+1. COPY
+   Copy ALL files from this zip into the app folder (the one with index.html), and replace the old ones:
+     index.html, app.js, ondevice.js (NEW), sw.js, style.css, manifest.webmanifest, README.md, icons\
+   Keep your models folder there. The app folder must look like this:
+     index.html
+     app.js
+     ondevice.js
+     sw.js
+     ...
+     models\detector.onnx
+     models\ripeness_yolo.onnx
+     models\disease_yolo.onnx
+     models\models.json
+
+2. TEST ON THE LAPTOP (VS Code + Live Server)
+   - Open the app folder in VS Code, right-click index.html -> "Open with Live Server".
+   - The top pill says "On-phone models · server optional". The Model selector shows "On this phone (offline)".
+   - Ripeness tab -> Upload photo -> a photo with 2-3 mangoes.
+     The first scan says "Loading detector model…" etc. (about 22 MB, once).
+     Expected: numbered boxes on the photo, one chip per mango, "Model: On this phone".
+   - Disease tab -> Upload a mango with spots, then a leaf photo.
+     Expected: disease name, verdict, numbered boxes; note "On this phone has no heat map".
+   - Press F12 -> Console: there should be no red errors. If there are, copy them to Claude.
+
+3. UPLOAD TO GITHUB (repo mango-pwa-ondevice)
+   a) Changed files: Add file -> Upload files -> "choose your files" -> select
+      index.html, app.js, ondevice.js, sw.js, README.md -> Commit changes.
+   b) Make the models folder: Add file -> Create new file -> in the name box type   models/README.md
+      (typing the "/" makes the folder) -> write one line, e.g. "On-device model files" -> Commit changes.
+   c) Open the new models folder on GitHub -> Add file -> Upload files -> "choose your files" -> select
+      detector.onnx, ripeness_yolo.onnx, disease_yolo.onnx, models.json -> Commit changes.
+      Each file is under 10 MB, so the web upload accepts them.
+   - Wait 1-2 minutes: https://bia0216.github.io/mango-pwa-ondevice/
+
+4. TEST ON THE PHONE
+   - Open the link with internet, scan one photo (this downloads and keeps the models).
+   - Turn on airplane mode, close and reopen the app, scan again. If it still grades: it runs on the phone.
+
+Never upload API keys. The presented app (mango-pwa) is not part of this.
