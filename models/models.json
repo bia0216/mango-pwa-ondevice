@@ -1,0 +1,123 @@
+{
+ "made_by": "mango_ondevice_export.ipynb",
+ "models": {
+  "detector": {
+   "file": "detector.onnx",
+   "source": "yolo/mango_detector_seed42/weights/best.pt",
+   "task": "detect",
+   "imgsz": 640,
+   "names": [
+    "mango"
+   ],
+   "input": {
+    "name": "images",
+    "shape": [
+     1,
+     3,
+     640,
+     640
+    ]
+   },
+   "outputs": [
+    {
+     "name": "output0",
+     "shape": [
+      1,
+      5,
+      8400
+     ]
+    }
+   ],
+   "MB": 9.9,
+   "output_format": "raw",
+   "conf": 0.35,
+   "nms_iou": 0.7,
+   "letterbox_pad": 114,
+   "check": {
+    "photos": 30,
+    "same_count": 1.0,
+    "mean_box_iou": 1.0
+   }
+  },
+  "ripeness_yolo": {
+   "file": "ripeness_yolo.onnx",
+   "source": "yolo/yolo26n_cls_seed42/weights/best.pt",
+   "task": "classify",
+   "imgsz": 224,
+   "names": [
+    "not_mango",
+    "overripe",
+    "ripe",
+    "unripe"
+   ],
+   "input": {
+    "name": "images",
+    "shape": [
+     1,
+     3,
+     224,
+     224
+    ]
+   },
+   "outputs": [
+    {
+     "name": "output0",
+     "shape": [
+      1,
+      4
+     ]
+    }
+   ],
+   "MB": 6.2,
+   "preprocess": "resize_crop",
+   "channel_order": "RGB",
+   "softmax_in_model": true,
+   "check": {
+    "photos": 40,
+    "same_answer": 1.0,
+    "mean_max_diff": 0.002
+   }
+  },
+  "disease_yolo": {
+   "file": "disease_yolo.onnx",
+   "source": "yolo/disease_yolo26n_cls_v3_6cls_seed42/weights/best.pt",
+   "task": "classify",
+   "imgsz": 224,
+   "names": [
+    "anthracnose",
+    "healthy",
+    "leaf_bacterial_canker",
+    "leaf_healthy",
+    "leaf_other",
+    "stem_end_rot"
+   ],
+   "input": {
+    "name": "images",
+    "shape": [
+     1,
+     3,
+     224,
+     224
+    ]
+   },
+   "outputs": [
+    {
+     "name": "output0",
+     "shape": [
+      1,
+      6
+     ]
+    }
+   ],
+   "MB": 6.2,
+   "preprocess": "resize_crop",
+   "channel_order": "RGB",
+   "softmax_in_model": true,
+   "check": {
+    "photos": 40,
+    "same_answer": 1.0,
+    "mean_max_diff": 0.0019
+   }
+  }
+ }
+}
