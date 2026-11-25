@@ -1,0 +1,16 @@
+{
+  "id": "mango-ondevice", "name": "Mango Grader On-device",
+  "short_name": "Mango OD",
+  "description": "Mango ripeness and disease grading that runs on the phone (prototype 2).",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#0B140F",
+  "theme_color": "#0B140F",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" },
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}
